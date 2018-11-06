@@ -22,6 +22,20 @@ class Question
   end
 
   def self.find_by_id(id)
+    questions = QuestionsDatabase.instance.execute(<<-SQL, id)
+      SELECT
+        *
+      FROM
+        questions
+      WHERE
+        id = ?
+    SQL
+    return nil unless id > 0
+
+    Question.new(questions.first)
+  end
+
+  def self.find_by_author_id(author_id)
     questions = QuestionsDatabase.instance.execute(<<-SQL, author_id)
       SELECT
         *
@@ -85,7 +99,7 @@ class User
       FROM
         users
       WHERE
-        fname = ?, lname = ?;
+        fname = ? AND lname = ?;
     SQL
     return nil unless user.length > 0
 
@@ -120,11 +134,19 @@ class User
         id = ?
     SQL
   end
+
+  def authored_questions
+    Question.find_by_author_id(@id)
+  end
+
+  def authored_replies
+    Reply.find_by_user_id(@id)
+  end
 end
 
 class Reply
 
-  attr_accessor :fname, :lname
+  attr_accessor :body, :question_id, :reply_id, :user_id
   attr_reader :id
 
   def self.all
@@ -132,7 +154,7 @@ class Reply
     data.map { |datum| Reply.new(datum) }
   end
 
-  def self.find_by_name(reply_id)
+  def self.find_by_reply_id(reply_id)
     reply = QuestionsDatabase.instance.execute(<<-SQL, reply_id)
 
       SELECT
@@ -145,6 +167,38 @@ class Reply
     return nil unless reply.length > 0
 
     Reply.new(reply.first)
+  end
+
+  def self.find_by_user_id(user_id)
+    reply = QuestionsDatabase.instance.execute(<<-SQL, user_id)
+
+      SELECT
+        *
+      FROM
+        replies
+      WHERE
+        user_id = ?;
+    SQL
+    return nil unless reply.length > 0
+
+    Reply.new(reply.first)
+
+  end
+
+  def self.find_by_question_id(question_id)
+    reply = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+
+      SELECT
+        *
+      FROM
+        replies
+      WHERE
+        question_id = ?;
+    SQL
+    return nil unless reply.length > 0
+
+    Reply.new(reply.first)
+
   end
 
   def initialize(options)
