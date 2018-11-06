@@ -17,9 +17,9 @@ CREATE TABLE questions (
 
 CREATE TABLE question_follows (
   id INTEGER PRIMARY KEY,
-  user_id INTEGER ,
+  user_id INTEGER,
   question_id INTEGER,
-2
+
   FOREIGN KEY (user_id) REFERENCES users(id),
   FOREIGN KEY (question_id) REFERENCES questions(id)
 );
@@ -38,7 +38,7 @@ CREATE TABLE replies (
 
 CREATE TABLE question_likes (
   id INTEGER PRIMARY KEY,
-  liked BOOLEAN NOT NULL,
+  liked INTEGER NOT NULL,
   user_id INTEGER ,
   question_id INTEGER,
 
@@ -70,8 +70,8 @@ VALUES
   (5, 1),
   (1, 3),
   (2, 2),
-  (3, 5),
-  (1, 6);
+  (3, 1),
+  (1, 3);
 
 INSERT INTO
   replies (body, question_id, reply_id, user_id)
@@ -87,12 +87,12 @@ VALUES
 INSERT INTO
   question_likes(liked, user_id, question_id)
 VALUES
-  (true, 1, 1)
-  (true, 1, 2)
-  (true, 1, 3)
-  (true, 5, 1)
-  (true, 5, 2)
-  (true, 5, 3)
-  (false, 6, 1)
-  (false, 6, 2)
-  (false, 6, 3)
+  (1, 1, 1),
+  (1, 1, 2),
+  (1, 1, 3),
+  (1, 5, 1),
+  (1, 5, 2),
+  (1, 5, 3),
+  (0, 6, 1),
+  (0, 6, 2),
+  (0, 6, 3);
