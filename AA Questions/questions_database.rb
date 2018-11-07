@@ -94,6 +94,10 @@ class Question
   def replies
     Reply.find_by_question_id(@id)
   end
+
+  def followers
+    QuestionFollow.followers_for_question_id(@id)
+  end
 end
 
 class User
@@ -156,6 +160,10 @@ class User
 
   def authored_replies
     Reply.find_by_user_id(@id)
+  end
+
+  def followed_questions
+    QuestionFollow.followed_questions_for_user_id(@id)
   end
 end
 
@@ -310,9 +318,13 @@ class QuestionFollow
         *
       FROM
         questions
+      JOIN
+        question_follows ON questions.id = question_follows.question_id
       WHERE
         user_id = ?;
     SQL
+
+
     return nil unless question.length > 0
 
     QuestionFollow.new(question.first)
@@ -326,6 +338,8 @@ class QuestionFollow
         *
       FROM
         users
+      JOIN
+        question_follows ON users.id = question_follows.user_id
       WHERE
         question_id = ?;
     SQL
@@ -335,32 +349,49 @@ class QuestionFollow
 
   end
 
+  def self.most_followed_questions(n)
+    popular_questions = QuestionsDatabase.instance.execute(<<-SQL)
+
+    SELECT
+      *
+    FROM
+      questions
+    JOIN
+      question_follows ON questions.id = question_follows.question_id
+    ORDER BY
+      COUNT(question_id)
+
+   SQL
+   return nil unless popular_questions.length > 0
+
+   QuestionFollow.new(popular_questions.first)
+
+  end
+
   def initialize(options)
     @id = options['id']
-    @body = options['body']
-    @question_id = options['question_id']
-    @reply_id = options['reply_id']
     @user_id = options['user_id']
+    @question_id = options['question_id']
   end
 
   def create
     raise "#{self} already in database" if @id
-    QuestionsDatabase.instance.execute(<<-SQL, @id, @body, @question_id, @reply_id, @user_id)
+    QuestionsDatabase.instance.execute(<<-SQL, @id, @user_id, @question_id)
       INSERT INTO
-        replies (id, body, question_id, reply_id, user_id)
+        question_follows (id, user_id, question_id)
       VALUES
-        (?, ?, ?, ?, ?)
+        (?, ?, ?)
     SQL
     @id = QuestionsDatabase.instance.last_insert_row_id
   end
 
   def update
     raise "#{self} not in database" unless @id
-    QuestionsDatabase.instance.execute(<<-SQL, @body, @question_id, @reply_id, @user_id, @id)
+    QuestionsDatabase.instance.execute(<<-SQL, @user_id, @question_id, @id)
       UPDATE
-        replies
+        question_follows
       SET
-        body = ?, question_id = ?, reply_id = ?, user_id = ?
+        user_id = ?, question_id = ?
       WHERE
         id = ?
     SQL
