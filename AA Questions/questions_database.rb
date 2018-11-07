@@ -79,6 +79,21 @@ class Question
     SQL
   end
 
+  def author
+    author_name = QuestionsDatabase.instance.execute(<<-SQL, @author_id)
+      SELECT
+        *
+      FROM
+        users
+      WHERE
+        id = ?
+    SQL
+    author_name
+  end
+
+  def replies
+    Reply.find_by_question_id(@id)
+  end
 end
 
 class User
@@ -213,9 +228,9 @@ class Reply
     raise "#{self} already in database" if @id
     QuestionsDatabase.instance.execute(<<-SQL, @id, @body, @question_id, @reply_id, @user_id)
       INSERT INTO
-        users (id, body, question_id, reply_id, user_id)
+        replies (id, body, question_id, reply_id, user_id)
       VALUES
-        (?, ?, ?)
+        (?, ?, ?, ?, ?)
     SQL
     @id = QuestionsDatabase.instance.last_insert_row_id
   end
@@ -224,7 +239,126 @@ class Reply
     raise "#{self} not in database" unless @id
     QuestionsDatabase.instance.execute(<<-SQL, @body, @question_id, @reply_id, @user_id, @id)
       UPDATE
+        replies
+      SET
+        body = ?, question_id = ?, reply_id = ?, user_id = ?
+      WHERE
+        id = ?
+    SQL
+  end
+
+  def author
+    author_name = QuestionsDatabase.instance.execute(<<-SQL, @user_id)
+      SELECT
+        *
+      FROM
         users
+      WHERE
+        id = ?
+    SQL
+    author_name
+  end
+
+  def question
+    question_info = QuestionsDatabase.instance.execute(<<-SQL, @question_id)
+      SELECT
+        *
+      FROM
+        questions
+      WHERE
+        id = ?
+    SQL
+    question_info
+  end
+
+  def parent_reply
+    parent_info = QuestionsDatabase.instance.execute(<<-SQL, @reply_id)
+      SELECT
+        *
+      FROM
+        replies
+      WHERE
+        id = ?
+    SQL
+    parent_info
+  end
+
+  def child_replies
+    child_info = QuestionsDatabase.instance.execute(<<-SQL, @id)
+      SELECT
+        *
+      FROM
+        replies
+      WHERE
+        reply_id = ?
+    SQL
+    child_info
+  end
+end
+
+class QuestionFollow
+
+  def self.all
+    data = QuestionsDatabase.instance.execute("SELECT * FROM replies")
+    data.map { |datum| Reply.new(datum) }
+  end
+
+  def self.followed_questions_for_user_id(user_id)
+    question = QuestionsDatabase.instance.execute(<<-SQL, user_id)
+
+      SELECT
+        *
+      FROM
+        questions
+      WHERE
+        user_id = ?;
+    SQL
+    return nil unless question.length > 0
+
+    QuestionFollow.new(question.first)
+
+  end
+
+  def self.followers_for_question_id(question_id)
+     user = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+
+      SELECT
+        *
+      FROM
+        users
+      WHERE
+        question_id = ?;
+    SQL
+    return nil unless user.length > 0
+
+    QuestionFollow.new(user.first)
+
+  end
+
+  def initialize(options)
+    @id = options['id']
+    @body = options['body']
+    @question_id = options['question_id']
+    @reply_id = options['reply_id']
+    @user_id = options['user_id']
+  end
+
+  def create
+    raise "#{self} already in database" if @id
+    QuestionsDatabase.instance.execute(<<-SQL, @id, @body, @question_id, @reply_id, @user_id)
+      INSERT INTO
+        replies (id, body, question_id, reply_id, user_id)
+      VALUES
+        (?, ?, ?, ?, ?)
+    SQL
+    @id = QuestionsDatabase.instance.last_insert_row_id
+  end
+
+  def update
+    raise "#{self} not in database" unless @id
+    QuestionsDatabase.instance.execute(<<-SQL, @body, @question_id, @reply_id, @user_id, @id)
+      UPDATE
+        replies
       SET
         body = ?, question_id = ?, reply_id = ?, user_id = ?
       WHERE
